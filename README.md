@@ -1,67 +1,93 @@
 # servers-up
 
-Discord bot that watches World of Warcraft realm status through the Blizzard API and posts when realms go down or come back up, plus a heads-up before weekly maintenance.
+A Discord bot that watches World of Warcraft realm status through the Blizzard API. It posts when realms go down or come back up, and gives a heads-up before weekly maintenance.
 
-## What it posts
+## Alerts
 
-- **Region-wide down / up**: when at least `MASS_CHANGE_THRESHOLD` of connected realms flip in one poll (maintenance, big outage), one message instead of hundreds.
-- **All realms up**: when the last down realm in the region comes back.
-- **Watched realms**: realms listed in `WATCH_REALMS` get their own DOWN / UP message every time (notes if a login queue is active).
-- **Maintenance warnings**: posted `MAINT_WARN_MINUTES` before the regular weekly maintenance window. This is schedule-based (Blizzard has no maintenance API), so it is labelled as "usually", not confirmed.
-- **API unreachable**: one message if the Blizzard API stops responding, then silent until it recovers.
+All alerts go to one channel. If `PING_ROLE_ID` is set, every alert except "status unavailable" pings that role.
 
-`/testalert` (Manage Server permission only) posts a sample of each alert type, marked as a test, to the alert channel so you can check where alerts go.
+| Alert | When it posts |
+| --- | --- |
+| Region going down / coming back up | At least `MASS_CHANGE_THRESHOLD` of connected realms flip in one poll (maintenance, big outage). One message instead of hundreds. |
+| All realms up | The last down realm in the region comes back. |
+| Watched realm went down / came back up | A realm in `WATCH_REALMS` changes status. Notes if a login queue is active. |
+| Weekly maintenance warning | `MAINT_WARN_MINUTES` before the regular maintenance window. Blizzard has no maintenance API, so this follows the usual schedule and is not a confirmed shutdown. |
+| Realm status unavailable | The Blizzard API stops responding. Posted once, then silent until it recovers. |
 
-`/status` shows a region summary and your watched realms. `/status realm:<name>` shows one realm (with autocomplete), its population, queue, and which realms it's connected with.
+The bot's own Discord status shows how many realms are up, e.g. "Watching 83/83 US realms up".
+
+## Commands
+
+| Command | What it does |
+| --- | --- |
+| `/status` | Region summary plus your watched realms. |
+| `/status realm:<name>` | One realm (with autocomplete): status, population, queue, and the realms it's connected with. |
+| `/testalert` | Posts a sample of each alert, marked as a test, to the alert channel. Needs the Manage Server permission. |
 
 ## Setup
 
-1. **Discord bot**: create an application at https://discord.com/developers/applications, add a Bot, copy its token. Invite it with the `bot` and `applications.commands` scopes and the Send Messages + Embed Links permissions (OAuth2 URL Generator in the same page).
+Needs Node 18.17 or newer.
+
+1. **Discord bot**: create an application at https://discord.com/developers/applications, add a Bot, and copy its token. Invite it with the `bot` and `applications.commands` scopes and the Send Messages and Embed Links permissions (OAuth2 URL Generator on the same page).
 2. **Blizzard API client**: create one at https://develop.battle.net/access/clients and copy the client ID and secret.
-3. **Channel ID**: in Discord, enable Developer Mode (User Settings > Advanced), right-click the channel > Copy Channel ID. Same for `GUILD_ID` (right-click the server) and `PING_ROLE_ID` (right-click a role) if you want them.
-4. Configure and run (Node 18+):
+3. **Channel ID**: in Discord, enable Developer Mode (User Settings > Advanced), then right-click the channel > Copy Channel ID. The same works for a server (`GUILD_ID`) and a role (`PING_ROLE_ID`).
+4. **Configure and run**:
 
 ```bash
-cp .env.example .env   # fill in the values
+cp .env.example .env # fill in the values
 npm install
 npm start
 ```
 
-Set `GUILD_ID` so `/status` shows up immediately; global commands can take up to an hour to appear.
+## Configuration
 
-## Regions
+Everything is set in `.env`. Only the first four are required.
 
-`REGION=us|eu|kr|tw`. For EU, also change the maintenance window, e.g. `MAINT_DAY=3 MAINT_HOUR=4 MAINT_TZ=Europe/Paris`. `MAINT_DAY` is 0 = Sunday ... 6 = Saturday, in `MAINT_TZ` local time (DST handled automatically).
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `DISCORD_TOKEN` | | Bot token. |
+| `CHANNEL_ID` | | Channel the alerts are posted to. |
+| `BLIZZARD_CLIENT_ID` | | Blizzard API client ID. |
+| `BLIZZARD_CLIENT_SECRET` | | Blizzard API client secret. |
+| `GUILD_ID` | none | Registers the commands in one server so they appear immediately. Without it they are global, which can take up to an hour. |
+| `PING_ROLE_ID` | none | Role to ping on alerts. |
+| `REGION` | `us` | `us`, `eu`, `kr` or `tw`. |
+| `POLL_SECONDS` | `60` | How often to check realm status. Minimum 30. |
+| `WATCH_REALMS` | none | Comma-separated realm slugs that get their own alerts, e.g. `area-52,illidan`. |
+| `MASS_CHANGE_THRESHOLD` | `0.5` | Fraction of realms that must flip at once to count as region-wide. |
+| `MAINT_DAY` | `2` | Maintenance day, 0 = Sunday to 6 = Saturday. |
+| `MAINT_HOUR` | `7` | Maintenance hour (24h) in `MAINT_TZ`. |
+| `MAINT_TZ` | `America/Los_Angeles` | Time zone for the maintenance window. Daylight saving is handled automatically. |
+| `MAINT_WARN_MINUTES` | `60,15` | Minutes before maintenance to post warnings. Leave empty to disable. |
+
+The maintenance defaults are for US (Tuesday 07:00 Pacific). For EU, use `MAINT_DAY=3`, `MAINT_HOUR=4` and `MAINT_TZ=Europe/Paris`.
 
 ## Keeping it running
 
-Any always-on box works: a VPS, a Raspberry Pi, or a host like Railway / Fly.io. With pm2:
-
-```bash
-npm i -g pm2
-pm2 start index.js --name servers-up
-pm2 save
-```
-
-### Raspberry Pi (systemd)
-
-Needs a Pi 3, 4, 5 or Zero 2 W (Node.js no longer ships builds for the Pi 1 / original Zero) and Node 18.17+.
+Any always-on Linux machine with systemd works, such as a Raspberry Pi or a VPS. The install script sets the bot up as a service:
 
 ```bash
 sudo apt update && sudo apt install -y git nodejs npm
-node -v   # needs v18.17 or newer
+node -v # needs v18.17 or newer
 git clone https://github.com/lolswirl/servers-up.git
 cd servers-up
 npm ci --omit=dev
 cp .env.example .env
-nano .env   # fill in your values, Ctrl+O to save, Ctrl+X to exit
+nano .env # fill in your values, Ctrl+O to save, Ctrl+X to exit
 bash scripts/install-service.sh
 ```
 
-The service starts on boot and restarts itself if it crashes. Logs: `journalctl -u servers-up -f`. To update: `git pull && npm ci --omit=dev && sudo systemctl restart servers-up`.
+The service starts on boot and restarts itself if it crashes.
 
-## Notes
+| Task | Command |
+| --- | --- |
+| Live logs | `journalctl -u servers-up -f` |
+| Restart (after editing `.env`) | `sudo systemctl restart servers-up` |
+| Update | `git pull && npm ci --omit=dev && sudo systemctl restart servers-up` |
+| Stop | `sudo systemctl stop servers-up` |
 
-- Status comes from the connected-realm search endpoint (`/data/wow/search/connected-realm`, `dynamic-<region>` namespace), one request per poll for the whole region. Docs: https://develop.battle.net/documentation/world-of-warcraft/game-data-apis
-- The first poll after startup only seeds state, so restarting the bot never spams messages.
-- Polling minimum is 30 seconds; 60 is plenty and stays far under Blizzard's rate limits.
+## How it works
+
+- Status comes from Blizzard's connected-realm search endpoint (`/data/wow/search/connected-realm`, `dynamic-<region>` namespace): one request per poll for the whole region. [API docs](https://develop.battle.net/documentation/world-of-warcraft/game-data-apis).
+- The first poll after startup only records the current state, so restarting the bot never posts a burst of alerts.
+- Polling every 60 seconds stays far under Blizzard's rate limits.
