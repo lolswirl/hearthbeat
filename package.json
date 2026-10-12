@@ -1,5 +1,5 @@
 {
-  "name": "wow-realm-status-bot",
+  "name": "servers-up",
   "version": "1.0.0",
   "description": "Discord bot that posts WoW realm up/down changes and weekly maintenance warnings",
   "main": "index.js",

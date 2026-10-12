@@ -1,4 +1,4 @@
-# WoW Realm Status Bot
+# servers-up
 
 Discord bot that watches World of Warcraft realm status through the Blizzard API and posts when realms go down or come back up, plus a heads-up before weekly maintenance.
 
@@ -37,7 +37,7 @@ Any always-on box works: a VPS, a Raspberry Pi, or a host like Railway / Fly.io.
 
 ```bash
 npm i -g pm2
-pm2 start index.js --name realm-bot
+pm2 start index.js --name servers-up
 pm2 save
 ```
 
