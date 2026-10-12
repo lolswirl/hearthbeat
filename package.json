@@ -1,0 +1,17 @@
+{
+  "name": "wow-realm-status-bot",
+  "version": "1.0.0",
+  "description": "Discord bot that posts WoW realm up/down changes and weekly maintenance warnings",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5"
+  }
+}
