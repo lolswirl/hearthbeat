@@ -7,6 +7,7 @@ import {
   SlashCommandBuilder,
   REST,
   Routes,
+  PermissionFlagsBits,
 } from 'discord.js';
 
 // ---------- config ----------
@@ -343,6 +344,30 @@ async function checkMaintenance() {
 }
 
 // ---------- slash command ----------
+const testCommand = new SlashCommandBuilder()
+  .setName('testalert')
+  .setDescription('Post a sample of each alert type to the alert channel')
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+
+function testEmbeds() {
+  const R = cfg.region.toUpperCase();
+  const s = last ? summary(last) : { up: 0, down: 0, total: 0 };
+  const watched = last ? [...last.values()].find(isWatched) : null;
+  const realm = watched ? label(watched) : 'Example Realm';
+  const at = Math.floor(Date.now() / 1000) + 3600;
+  const tag = (e) => e.setFooter({ text: 'TEST: not a real alert' }).setTimestamp();
+  return [
+    tag(new EmbedBuilder().setColor(COLORS.WARN).setTitle('[TEST] Weekly maintenance in 60 minutes')
+      .setDescription(`${R} realms usually go down for weekly maintenance <t:${at}:t> (<t:${at}:R>).`)),
+    tag(new EmbedBuilder().setColor(COLORS.DOWN).setTitle(`[TEST] ${R} realms are going down`)
+      .setDescription(`${s.total} of ${s.total} connected realms just went DOWN.`)),
+    tag(new EmbedBuilder().setColor(COLORS.DOWN).setTitle(`[TEST] DOWN: ${realm}`)),
+    tag(new EmbedBuilder().setColor(COLORS.UP).setTitle(`[TEST] UP: ${realm}`)),
+    tag(new EmbedBuilder().setColor(COLORS.UP).setTitle(`[TEST] All ${R} realms are up`)
+      .setDescription(`${s.total} of ${s.total} connected realms are UP.`)),
+  ];
+}
+
 const statusCommand = new SlashCommandBuilder()
   .setName('status')
   .setDescription('WoW realm status')
@@ -362,6 +387,16 @@ client.on('interactionCreate', async (i) => {
         .slice(0, 25)
         .map((r) => ({ name: r.name, value: r.slug }));
       return i.respond(choices);
+    }
+
+    if (i.isChatInputCommand() && i.commandName === 'testalert') {
+      if (!channel) return i.reply({ content: 'Alert channel not ready yet.', ephemeral: true });
+      try {
+        await channel.send({ embeds: testEmbeds(), allowedMentions: { parse: [] } });
+        return i.reply({ content: `Posted test alerts to <#${channel.id}>.`, ephemeral: true });
+      } catch (e) {
+        return i.reply({ content: `Couldn't post to <#${channel.id}>: ${e.message}`, ephemeral: true });
+      }
     }
 
     if (!i.isChatInputCommand() || i.commandName !== 'status') return;
@@ -419,12 +454,12 @@ client.once('ready', async () => {
   console.log(`Logged in as ${client.user.tag}`);
 
   const rest = new REST().setToken(cfg.token);
-  const body = [statusCommand.toJSON()];
+  const body = [statusCommand.toJSON(), testCommand.toJSON()];
   const route = cfg.guildId
     ? Routes.applicationGuildCommands(client.user.id, cfg.guildId)
     : Routes.applicationCommands(client.user.id);
   await rest.put(route, { body });
-  console.log(`Registered /status ${cfg.guildId ? 'in guild' : 'globally'}`);
+  console.log(`Registered /status and /testalert ${cfg.guildId ? 'in guild' : 'globally'}`);
 
   channel = await client.channels.fetch(cfg.channelId).catch(() => null);
   if (!channel?.isTextBased()) {

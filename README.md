@@ -10,6 +10,8 @@ Discord bot that watches World of Warcraft realm status through the Blizzard API
 - **Maintenance warnings**: posted `MAINT_WARN_MINUTES` before the regular weekly maintenance window. This is schedule-based (Blizzard has no maintenance API), so it is labelled as "usually", not confirmed.
 - **API unreachable**: one message if the Blizzard API stops responding, then silent until it recovers.
 
+`/testalert` (Manage Server permission only) posts a sample of each alert type, marked as a test, to the alert channel so you can check where alerts go.
+
 `/status` shows a region summary and your watched realms. `/status realm:<name>` shows one realm (with autocomplete), its population, queue, and which realms it's connected with.
 
 ## Setup
