@@ -155,7 +155,7 @@ function summary(map) {
 // ---------- alert embeds ----------
 // Shared by the real alerts and /testalert so the two can't drift apart
 const REGION = cfg.region.toUpperCase();
-const counts = (s) => `🟢 **${s.up}** up · 🔴 **${s.down}** down`;
+const counts = (s) => `**${s.up}** up · **${s.down}** down`;
 
 function realmAlert(cr, up) {
   // Title names only the watched realms; the rest of the connected group goes in the description
@@ -167,7 +167,7 @@ function realmAlert(cr, up) {
   if (up && cr.queue) lines.push('Login queue is active.');
   return new EmbedBuilder()
     .setColor(up ? COLORS.UP : COLORS.DOWN)
-    .setTitle(`${up ? '🟢' : '🔴'} ${shown.map((r) => r.name).join(', ')} ${up ? 'came back up' : 'went down'}`)
+    .setTitle(`${shown.map((r) => r.name).join(', ')} ${up ? 'came back up' : 'went down'}`)
     .setDescription(lines.join('\n') || null);
 }
 
@@ -175,7 +175,7 @@ const alerts = {
   maintenance: (mins, at) =>
     new EmbedBuilder()
       .setColor(COLORS.WARN)
-      .setTitle(`🟡 Weekly maintenance in ${mins} minutes`)
+      .setTitle(`Weekly maintenance in ${mins} minutes`)
       .setDescription(
         `${REGION} realms usually go down at <t:${at}:t> (<t:${at}:R>).\n` +
           'This is the regular schedule, not a confirmed shutdown.'
@@ -183,24 +183,24 @@ const alerts = {
   massDown: (n, s) =>
     new EmbedBuilder()
       .setColor(COLORS.DOWN)
-      .setTitle(`🔴 ${REGION} realms are going down`)
+      .setTitle(`${REGION} realms are going down`)
       .setDescription(`**${n}** of **${s.total}** connected realms just went down.\n${counts(s)}`),
   massUp: (n, s) =>
     new EmbedBuilder()
       .setColor(COLORS.UP)
-      .setTitle(`🟢 ${REGION} realms are coming back up`)
+      .setTitle(`${REGION} realms are coming back up`)
       .setDescription(`**${n}** of **${s.total}** connected realms just came up.\n${counts(s)}`),
   allUp: (s) =>
     new EmbedBuilder()
       .setColor(COLORS.UP)
-      .setTitle(`🟢 All ${REGION} realms are up`)
+      .setTitle(`All ${REGION} realms are up`)
       .setDescription(`All **${s.total}** connected realms are up.`),
   realmDown: (cr) => realmAlert(cr, false),
   realmUp: (cr) => realmAlert(cr, true),
   apiDown: (msg) =>
     new EmbedBuilder()
       .setColor(COLORS.WARN)
-      .setTitle('🟡 Realm status unavailable')
+      .setTitle('Realm status unavailable')
       .setDescription(
         `Couldn't reach the Blizzard API, will keep retrying. This often happens during maintenance.\n\`${msg}\``
       ),
@@ -352,7 +352,7 @@ function testEmbeds() {
     alerts.massUp(total, allUp),
     alerts.allUp(allUp),
     alerts.apiDown('example error'),
-  ].map((e) => e.setTitle(`[TEST] ${e.data.title}`).setFooter({ text: 'TEST: not a real alert' }));
+  ].map((e) => e.setFooter({ text: 'TEST: not a real alert' }));
 }
 
 const statusCommand = new SlashCommandBuilder()
@@ -422,7 +422,7 @@ client.on('interactionCreate', async (i) => {
     const others = cr.realms.filter((r) => r.slug !== realm.slug).map((r) => r.name);
     const embed = new EmbedBuilder()
       .setColor(cr.status === 'UP' ? COLORS.UP : COLORS.DOWN)
-      .setTitle(`${cr.status === 'UP' ? '🟢' : '🔴'} ${realm.name} is ${cr.status === 'UP' ? 'up' : 'down'}`)
+      .setTitle(`${realm.name} is ${cr.status === 'UP' ? 'up' : 'down'}`)
       .addFields(
         { name: 'Population', value: String(cr.population), inline: true },
         { name: 'Queue', value: cr.queue ? 'Yes' : 'No', inline: true }
