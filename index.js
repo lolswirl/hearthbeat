@@ -152,6 +152,60 @@ function summary(map) {
   return { up, down, total: map.size };
 }
 
+// ---------- alert embeds ----------
+// Shared by the real alerts and /testalert so the two can't drift apart
+const REGION = cfg.region.toUpperCase();
+const counts = (s) => `🟢 **${s.up}** up · 🔴 **${s.down}** down`;
+
+function realmAlert(cr, up) {
+  // Title names only the watched realms; the rest of the connected group goes in the description
+  const watched = cr.realms.filter((r) => cfg.watch.includes(r.slug));
+  const shown = watched.length ? watched : cr.realms;
+  const others = cr.realms.filter((r) => !shown.includes(r)).map((r) => r.name);
+  const lines = [];
+  if (others.length) lines.push(`Connected with ${others.join(', ')}`);
+  if (up && cr.queue) lines.push('Login queue is active.');
+  return new EmbedBuilder()
+    .setColor(up ? COLORS.UP : COLORS.DOWN)
+    .setTitle(`${up ? '🟢' : '🔴'} ${shown.map((r) => r.name).join(', ')} ${up ? 'came back up' : 'went down'}`)
+    .setDescription(lines.join('\n') || null);
+}
+
+const alerts = {
+  maintenance: (mins, at) =>
+    new EmbedBuilder()
+      .setColor(COLORS.WARN)
+      .setTitle(`🟡 Weekly maintenance in ${mins} minutes`)
+      .setDescription(
+        `${REGION} realms usually go down at <t:${at}:t> (<t:${at}:R>).\n` +
+          'This is the regular schedule, not a confirmed shutdown.'
+      ),
+  massDown: (n, s) =>
+    new EmbedBuilder()
+      .setColor(COLORS.DOWN)
+      .setTitle(`🔴 ${REGION} realms are going down`)
+      .setDescription(`**${n}** of **${s.total}** connected realms just went down.\n${counts(s)}`),
+  massUp: (n, s) =>
+    new EmbedBuilder()
+      .setColor(COLORS.UP)
+      .setTitle(`🟢 ${REGION} realms are coming back up`)
+      .setDescription(`**${n}** of **${s.total}** connected realms just came up.\n${counts(s)}`),
+  allUp: (s) =>
+    new EmbedBuilder()
+      .setColor(COLORS.UP)
+      .setTitle(`🟢 All ${REGION} realms are up`)
+      .setDescription(`All **${s.total}** connected realms are up.`),
+  realmDown: (cr) => realmAlert(cr, false),
+  realmUp: (cr) => realmAlert(cr, true),
+  apiDown: (msg) =>
+    new EmbedBuilder()
+      .setColor(COLORS.WARN)
+      .setTitle('🟡 Realm status unavailable')
+      .setDescription(
+        `Couldn't reach the Blizzard API, will keep retrying. This often happens during maintenance.\n\`${msg}\``
+      ),
+};
+
 // ---------- Discord ----------
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 let channel = null;
@@ -178,16 +232,7 @@ async function poll() {
     if (!apiFailing) {
       apiFailing = true;
       setPresence('Blizzard API unreachable', 'idle');
-      await post(
-        new EmbedBuilder()
-          .setColor(COLORS.WARN)
-          .setTitle('Realm status unavailable')
-          .setDescription(
-            `Couldn't reach the Blizzard API (${e.message}). Will keep retrying. ` +
-              '(This sometimes happens during maintenance itself.)'
-          )
-          .setTimestamp()
-      );
+      await post(alerts.apiDown(e.message));
     }
     return;
   }
@@ -223,66 +268,18 @@ async function poll() {
   const massDown = wentDown.length / total >= cfg.massThreshold;
   const massUp = cameUp.length / total >= cfg.massThreshold;
 
-  if (massDown) {
-    await post(
-      new EmbedBuilder()
-        .setColor(COLORS.DOWN)
-        .setTitle(`${cfg.region.toUpperCase()} realms are going down`)
-        .setDescription(
-          `${wentDown.length} of ${total} connected realms just went DOWN ` +
-            `(${s.up} up, ${s.down} down right now).`
-        )
-        .setTimestamp(),
-      true
-    );
-  }
-  if (massUp) {
-    await post(
-      new EmbedBuilder()
-        .setColor(COLORS.UP)
-        .setTitle(`${cfg.region.toUpperCase()} realms are coming back up`)
-        .setDescription(
-          `${cameUp.length} of ${total} connected realms just came UP ` +
-            `(${s.up} up, ${s.down} down right now).`
-        )
-        .setTimestamp(),
-      true
-    );
-  }
+  if (massDown) await post(alerts.massDown(wentDown.length, s), true);
+  if (massUp) await post(alerts.massUp(cameUp.length, s), true);
 
   // Region fully recovered after a mass event that trickled back in
-  if (!massUp && cameUp.length && s.down === 0) {
-    await post(
-      new EmbedBuilder()
-        .setColor(COLORS.UP)
-        .setTitle(`All ${cfg.region.toUpperCase()} realms are up`)
-        .setDescription(`${s.total} of ${s.total} connected realms are UP.`)
-        .setTimestamp(),
-      true
-    );
-  }
+  if (!massUp && cameUp.length && s.down === 0) await post(alerts.allUp(s), true);
 
   // Individual watched realms always get their own message
   for (const cr of wentDown) {
-    if (!isWatched(cr)) continue;
-    await post(
-      new EmbedBuilder()
-        .setColor(COLORS.DOWN)
-        .setTitle(`DOWN: ${label(cr)}`)
-        .setTimestamp(),
-      true
-    );
+    if (isWatched(cr)) await post(alerts.realmDown(cr), true);
   }
   for (const cr of cameUp) {
-    if (!isWatched(cr)) continue;
-    await post(
-      new EmbedBuilder()
-        .setColor(COLORS.UP)
-        .setTitle(`UP: ${label(cr)}`)
-        .setDescription(cr.queue ? 'Login queue is active.' : null)
-        .setTimestamp(),
-      true
-    );
+    if (isWatched(cr)) await post(alerts.realmUp(cr), true);
   }
 
   presenceFromSummary(s);
@@ -326,18 +323,7 @@ async function checkMaintenance() {
     if (mins === w && !sentWarnings.has(weekKey)) {
       sentWarnings.add(weekKey);
       const at = Math.floor((Date.now() + mins * 60_000) / 60_000) * 60;
-      await post(
-        new EmbedBuilder()
-          .setColor(COLORS.WARN)
-          .setTitle(`Weekly maintenance in ${w} minutes`)
-          .setDescription(
-            `${cfg.region.toUpperCase()} realms usually go down for weekly maintenance <t:${at}:t> ` +
-              `(<t:${at}:R>). This is the regular schedule, not a confirmed shutdown; ` +
-              'Blizzard sometimes moves or skips it.'
-          )
-          .setTimestamp(),
-        true
-      );
+      await post(alerts.maintenance(w, at), true);
     }
   }
   if (sentWarnings.size > 50) sentWarnings.clear();
@@ -350,22 +336,23 @@ const testCommand = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 function testEmbeds() {
-  const R = cfg.region.toUpperCase();
-  const s = last ? summary(last) : { up: 0, down: 0, total: 0 };
-  const watched = last ? [...last.values()].find(isWatched) : null;
-  const realm = watched ? label(watched) : 'Example Realm';
+  const { total } = last ? summary(last) : { total: 0 };
+  const allDown = { up: 0, down: total, total };
+  const allUp = { up: total, down: 0, total };
+  const cr = (last && [...last.values()].find(isWatched)) || {
+    queue: false,
+    realms: [{ name: 'Example Realm', slug: 'example-realm' }],
+  };
   const at = Math.floor(Date.now() / 1000) + 3600;
-  const tag = (e) => e.setFooter({ text: 'TEST: not a real alert' }).setTimestamp();
   return [
-    tag(new EmbedBuilder().setColor(COLORS.WARN).setTitle('[TEST] Weekly maintenance in 60 minutes')
-      .setDescription(`${R} realms usually go down for weekly maintenance <t:${at}:t> (<t:${at}:R>).`)),
-    tag(new EmbedBuilder().setColor(COLORS.DOWN).setTitle(`[TEST] ${R} realms are going down`)
-      .setDescription(`${s.total} of ${s.total} connected realms just went DOWN.`)),
-    tag(new EmbedBuilder().setColor(COLORS.DOWN).setTitle(`[TEST] DOWN: ${realm}`)),
-    tag(new EmbedBuilder().setColor(COLORS.UP).setTitle(`[TEST] UP: ${realm}`)),
-    tag(new EmbedBuilder().setColor(COLORS.UP).setTitle(`[TEST] All ${R} realms are up`)
-      .setDescription(`${s.total} of ${s.total} connected realms are UP.`)),
-  ];
+    alerts.maintenance(60, at),
+    alerts.massDown(total, allDown),
+    alerts.realmDown(cr),
+    alerts.realmUp(cr),
+    alerts.massUp(total, allUp),
+    alerts.allUp(allUp),
+    alerts.apiDown('example error'),
+  ].map((e) => e.setTitle(`[TEST] ${e.data.title}`).setFooter({ text: 'TEST: not a real alert' }));
 }
 
 const statusCommand = new SlashCommandBuilder()
@@ -413,8 +400,8 @@ client.on('interactionCreate', async (i) => {
       const watched = [...last.values()].filter(isWatched);
       const embed = new EmbedBuilder()
         .setColor(s.down === 0 ? COLORS.UP : s.up === 0 ? COLORS.DOWN : COLORS.WARN)
-        .setTitle(`${cfg.region.toUpperCase()} realm status`)
-        .setDescription(`${s.up} of ${s.total} connected realms UP, ${s.down} DOWN.`)
+        .setTitle(`${REGION} realm status`)
+        .setDescription(`${counts(s)} · ${s.total} connected realms`)
         .setFooter(footer ? { text: footer } : null)
         .setTimestamp(lastOk);
       if (watched.length) {
@@ -435,7 +422,7 @@ client.on('interactionCreate', async (i) => {
     const others = cr.realms.filter((r) => r.slug !== realm.slug).map((r) => r.name);
     const embed = new EmbedBuilder()
       .setColor(cr.status === 'UP' ? COLORS.UP : COLORS.DOWN)
-      .setTitle(`${realm.name}: ${cr.status}`)
+      .setTitle(`${cr.status === 'UP' ? '🟢' : '🔴'} ${realm.name} is ${cr.status === 'UP' ? 'up' : 'down'}`)
       .addFields(
         { name: 'Population', value: String(cr.population), inline: true },
         { name: 'Queue', value: cr.queue ? 'Yes' : 'No', inline: true }
