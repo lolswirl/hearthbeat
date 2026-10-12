@@ -2,6 +2,7 @@ import 'dotenv/config';
 import {
   Client,
   GatewayIntentBits,
+  ActivityType,
   EmbedBuilder,
   SlashCommandBuilder,
   REST,
@@ -110,6 +111,23 @@ async function fetchRealms() {
 let last = null; // Map from previous poll
 let lastOk = null; // Date of last successful poll
 let apiFailing = false;
+let lastPresence = null;
+
+// Bot status in the member list: green = all up, yellow = some down, red = all down
+function setPresence(text, status) {
+  const key = `${status}|${text}`;
+  if (!client.user || key === lastPresence) return;
+  lastPresence = key;
+  client.user.setPresence({
+    status,
+    activities: [{ name: text, type: ActivityType.Watching }],
+  });
+}
+
+function presenceFromSummary(s) {
+  const status = s.down === 0 ? 'online' : s.up === 0 ? 'dnd' : 'idle';
+  setPresence(`${s.up}/${s.total} ${cfg.region.toUpperCase()} realms up`, status);
+}
 
 const label = (cr) => cr.realms.map((r) => r.name).join(', ');
 const isWatched = (cr) => cr.realms.some((r) => cfg.watch.includes(r.slug));
@@ -158,6 +176,7 @@ async function poll() {
     console.error(new Date().toISOString(), e.message);
     if (!apiFailing) {
       apiFailing = true;
+      setPresence('Blizzard API unreachable', 'idle');
       await post(
         new EmbedBuilder()
           .setColor(COLORS.WARN)
@@ -182,6 +201,7 @@ async function poll() {
     last = now;
     const s = summary(now);
     console.log(`Seeded ${s.total} connected realms (${s.up} up, ${s.down} down)`);
+    presenceFromSummary(s);
     return;
   }
 
@@ -263,6 +283,8 @@ async function poll() {
       true
     );
   }
+
+  presenceFromSummary(s);
 
   if (wentDown.length || cameUp.length) {
     console.log(
