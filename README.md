@@ -86,6 +86,21 @@ The service starts on boot and restarts itself if it crashes.
 | Update | `git pull && npm ci --omit=dev && sudo systemctl restart servers-up` |
 | Stop | `sudo systemctl stop servers-up` |
 
+### Automatic updates
+
+To have the machine follow GitHub by itself, run this once:
+
+```bash
+bash scripts/install-autoupdate.sh
+```
+
+It adds a timer that checks `main` every minute. When there are new commits it resets the checkout to match GitHub, reinstalls dependencies, and restarts the bot. Local edits to tracked files are discarded; `.env` is left alone.
+
+| Task | Command |
+| --- | --- |
+| Update log | `journalctl -u servers-up-update -f` |
+| Turn off | `sudo systemctl disable --now servers-up-update.timer` |
+
 ## How it works
 
 - Status comes from Blizzard's connected-realm search endpoint (`/data/wow/search/connected-realm`, `dynamic-<region>` namespace): one request per poll for the whole region. [API docs](https://develop.battle.net/documentation/world-of-warcraft/game-data-apis).
