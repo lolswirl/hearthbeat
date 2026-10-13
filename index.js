@@ -156,6 +156,11 @@ function summary(map) {
 // Shared by the real alerts and /testalert so the two can't drift apart
 const REGION = cfg.region.toUpperCase();
 const counts = (s) => `**${s.up}** up · **${s.down}** down`;
+// "Including Illidan, Area 52." line for region-wide alerts, so watched realms don't each post their own
+const including = (crs) => {
+  const names = crs.flatMap((cr) => cr.realms).filter((r) => cfg.watch.includes(r.slug)).map((r) => r.name);
+  return names.length ? `\nIncluding ${names.join(', ')}.` : '';
+};
 
 function realmAlert(cr, up) {
   // Title names only the watched realms; the rest of the connected group goes in the description
@@ -178,17 +183,17 @@ const alerts = {
       .setTitle(`Weekly maintenance in ${mins} minutes`)
       .setDescription(`${REGION} realms usually go down at <t:${at}:t> (<t:${at}:R>).`)
       .setFooter({ text: 'Regular schedule, not a confirmed shutdown' }),
-  massDown: (n, s) =>
+  massDown: (crs, s) =>
     new EmbedBuilder()
       .setColor(COLORS.DOWN)
       .setTitle(`${REGION} realms are going down`)
-      .setDescription(`**${n}** of **${s.total}** connected realms just went down.`)
+      .setDescription(`**${crs.length}** of **${s.total}** connected realms just went down.${including(crs)}`)
       .setFooter({ text: `${s.up} up · ${s.down} down` }),
-  massUp: (n, s) =>
+  massUp: (crs, s) =>
     new EmbedBuilder()
       .setColor(COLORS.UP)
       .setTitle(`${REGION} realms are coming back up`)
-      .setDescription(`**${n}** of **${s.total}** connected realms just came up.`)
+      .setDescription(`**${crs.length}** of **${s.total}** connected realms just came up.${including(crs)}`)
       .setFooter({ text: `${s.up} up · ${s.down} down` }),
   allUp: (s) =>
     new EmbedBuilder()
@@ -268,18 +273,18 @@ async function poll() {
   const massDown = wentDown.length / total >= cfg.massThreshold;
   const massUp = cameUp.length / total >= cfg.massThreshold;
 
-  if (massDown) await post(alerts.massDown(wentDown.length, s), true);
-  if (massUp) await post(alerts.massUp(cameUp.length, s), true);
+  if (massDown) await post(alerts.massDown(wentDown, s), true);
+  if (massUp) await post(alerts.massUp(cameUp, s), true);
 
   // Region fully recovered after a mass event that trickled back in
   if (!massUp && cameUp.length && s.down === 0) await post(alerts.allUp(s), true);
 
-  // Individual watched realms always get their own message
+  // Watched realms get their own message, unless a region-wide one above already names them
   for (const cr of wentDown) {
-    if (isWatched(cr)) await post(alerts.realmDown(cr), true);
+    if (!massDown && isWatched(cr)) await post(alerts.realmDown(cr), true);
   }
   for (const cr of cameUp) {
-    if (isWatched(cr)) await post(alerts.realmUp(cr), true);
+    if (!massUp && isWatched(cr)) await post(alerts.realmUp(cr), true);
   }
 
   presenceFromSummary(s);
@@ -336,7 +341,8 @@ const testCommand = new SlashCommandBuilder()
   .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 function testEmbeds() {
-  const { total } = last ? summary(last) : { total: 0 };
+  const all = last ? [...last.values()] : [];
+  const total = all.length;
   const allDown = { up: 0, down: total, total };
   const allUp = { up: total, down: 0, total };
   const cr = (last && [...last.values()].find(isWatched)) || {
@@ -346,10 +352,10 @@ function testEmbeds() {
   const at = Math.floor(Date.now() / 1000) + 3600;
   return [
     alerts.maintenance(60, at),
-    alerts.massDown(total, allDown),
+    alerts.massDown(all, allDown),
     alerts.realmDown(cr),
     alerts.realmUp(cr),
-    alerts.massUp(total, allUp),
+    alerts.massUp(all, allUp),
     alerts.allUp(allUp),
     alerts.apiDown('example error'),
   ].map((e) => e.setTitle(`[TEST] ${e.data.title}`));
