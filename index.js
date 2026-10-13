@@ -176,20 +176,20 @@ const alerts = {
     new EmbedBuilder()
       .setColor(COLORS.WARN)
       .setTitle(`Weekly maintenance in ${mins} minutes`)
-      .setDescription(
-        `${REGION} realms usually go down at <t:${at}:t> (<t:${at}:R>).\n` +
-          'This is the regular schedule, not a confirmed shutdown.'
-      ),
+      .setDescription(`${REGION} realms usually go down at <t:${at}:t> (<t:${at}:R>).`)
+      .setFooter({ text: 'Regular schedule, not a confirmed shutdown' }),
   massDown: (n, s) =>
     new EmbedBuilder()
       .setColor(COLORS.DOWN)
       .setTitle(`${REGION} realms are going down`)
-      .setDescription(`**${n}** of **${s.total}** connected realms just went down.\n${counts(s)}`),
+      .setDescription(`**${n}** of **${s.total}** connected realms just went down.`)
+      .setFooter({ text: `${s.up} up · ${s.down} down` }),
   massUp: (n, s) =>
     new EmbedBuilder()
       .setColor(COLORS.UP)
       .setTitle(`${REGION} realms are coming back up`)
-      .setDescription(`**${n}** of **${s.total}** connected realms just came up.\n${counts(s)}`),
+      .setDescription(`**${n}** of **${s.total}** connected realms just came up.`)
+      .setFooter({ text: `${s.up} up · ${s.down} down` }),
   allUp: (s) =>
     new EmbedBuilder()
       .setColor(COLORS.UP)
@@ -352,7 +352,7 @@ function testEmbeds() {
     alerts.massUp(total, allUp),
     alerts.allUp(allUp),
     alerts.apiDown('example error'),
-  ].map((e) => e.setFooter({ text: 'TEST: not a real alert' }));
+  ].map((e) => e.setTitle(`[TEST] ${e.data.title}`));
 }
 
 const statusCommand = new SlashCommandBuilder()
