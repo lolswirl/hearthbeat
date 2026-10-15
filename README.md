@@ -12,7 +12,7 @@ All alerts go to one channel. If `PING_ROLE_ID` is set, every alert except "stat
 | All realms up | The last down realm in the region comes back. |
 | Watched realm went down / came back up | A realm in `WATCH_REALMS` changes status. Notes if a login queue is active. |
 | Weekly maintenance warning | `MAINT_WARN_MINUTES` before the regular maintenance window. Blizzard has no maintenance API, so this follows the usual schedule and is not a confirmed shutdown. |
-| Realm status unavailable | The Blizzard API stops responding. Posted once, then silent until it recovers. |
+| Realm status unavailable | Blizzard API requests fail 3 polls in a row. Posted once, then silent until a poll succeeds. |
 
 The bot's own Discord status shows how many realms are up, e.g. "Watching 83/83 US realms up".
 

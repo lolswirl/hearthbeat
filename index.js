@@ -111,7 +111,7 @@ async function fetchRealms() {
 // ---------- state ----------
 let last = null; // Map from previous poll
 let lastOk = null; // Date of last successful poll
-let apiFailing = false;
+let apiFailures = 0; // consecutive failed polls
 let lastPresence = null;
 
 // Bot status in the member list: green = all up, yellow = some down, red = all down
@@ -207,7 +207,7 @@ const alerts = {
       .setColor(COLORS.WARN)
       .setTitle('Realm status unavailable')
       .setDescription(
-        `Couldn't reach the Blizzard API, will keep retrying. This often happens during maintenance.\n\`${msg}\``
+        `Blizzard API requests failed 3 times in a row, will keep retrying.\n\`${msg}\``
       ),
 };
 
@@ -234,17 +234,17 @@ async function poll() {
     now = await fetchRealms();
   } catch (e) {
     console.error(new Date().toISOString(), e.message);
-    if (!apiFailing) {
-      apiFailing = true;
-      setPresence('Blizzard API unreachable', 'idle');
+    apiFailures++;
+    if (apiFailures === 3) {
+      setPresence('Blizzard API requests failing', 'idle');
       await post(alerts.apiDown(e.message));
     }
     return;
   }
 
-  if (apiFailing) {
-    apiFailing = false;
-    console.log('Blizzard API reachable again');
+  if (apiFailures) {
+    apiFailures = 0;
+    console.log('Blizzard API requests succeeding again');
   }
   lastOk = new Date();
 
