@@ -69,8 +69,8 @@ Any always-on Linux machine with systemd works, such as a Raspberry Pi or a VPS.
 ```bash
 sudo apt update && sudo apt install -y git nodejs npm
 node -v # needs v18.17 or newer
-git clone https://github.com/lolswirl/servers-up.git
-cd servers-up
+git clone https://github.com/lolswirl/serversup.git
+cd serversup
 npm ci --omit=dev
 cp .env.example .env
 nano .env # fill in your values, Ctrl+O to save, Ctrl+X to exit
