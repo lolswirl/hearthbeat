@@ -112,6 +112,7 @@ async function fetchRealms() {
 let last = null; // Map from previous poll
 let lastOk = null; // Date of last successful poll
 let apiFailures = 0; // consecutive failed polls
+let regionDown = false; // at least massThreshold of the region is down
 let lastPresence = null;
 
 // Bot status in the member list: green = all up, yellow = some down, red = all down
@@ -187,14 +188,12 @@ const alerts = {
     new EmbedBuilder()
       .setColor(COLORS.DOWN)
       .setTitle(`${REGION} realms are going down`)
-      .setDescription(`**${crs.length}** of **${s.total}** connected realms just went down.${including(crs)}`)
-      .setFooter({ text: `${s.up} up · ${s.down} down` }),
+      .setDescription(`**${s.down}** of **${s.total}** connected realms are down.${including(crs)}`),
   massUp: (crs, s) =>
     new EmbedBuilder()
       .setColor(COLORS.UP)
       .setTitle(`${REGION} realms are coming back up`)
-      .setDescription(`**${crs.length}** of **${s.total}** connected realms just came up.${including(crs)}`)
-      .setFooter({ text: `${s.up} up · ${s.down} down` }),
+      .setDescription(`**${s.up}** of **${s.total}** connected realms are up.${including(crs)}`),
   allUp: (s) =>
     new EmbedBuilder()
       .setColor(COLORS.UP)
@@ -251,6 +250,7 @@ async function poll() {
   if (!last) {
     last = now;
     const s = summary(now);
+    regionDown = s.down / (s.total || 1) >= cfg.massThreshold;
     console.log(`Seeded ${s.total} connected realms (${s.up} up, ${s.down} down)`);
     presenceFromSummary(s);
     return;
@@ -269,9 +269,12 @@ async function poll() {
   const total = now.size || 1;
   const s = summary(now);
 
-  // Region-wide events (maintenance / big outage): one message instead of hundreds
-  const massDown = wentDown.length / total >= cfg.massThreshold;
-  const massUp = cameUp.length / total >= cfg.massThreshold;
+  // Region-wide events (maintenance / big outage): one message instead of hundreds.
+  // Based on how much of the region is down, not how much flipped this poll, since maintenance takes realms down in waves.
+  const nowRegionDown = s.down / total >= cfg.massThreshold;
+  const massDown = nowRegionDown && !regionDown;
+  const massUp = !nowRegionDown && regionDown;
+  regionDown = nowRegionDown;
 
   if (massDown) await post(alerts.massDown(wentDown, s), true);
   if (massUp) await post(alerts.massUp(cameUp, s), true);

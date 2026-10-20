@@ -8,7 +8,7 @@ All alerts go to one channel. If `PING_ROLE_ID` is set, every alert except "stat
 
 | Alert | When it posts |
 | --- | --- |
-| Region going down / coming back up | At least `MASS_CHANGE_THRESHOLD` of connected realms flip in one poll (maintenance, big outage). One message instead of hundreds. |
+| Region going down / coming back up | The share of connected realms that are down crosses `MASS_CHANGE_THRESHOLD` (maintenance, big outage), even if they went down in waves. One message instead of hundreds. |
 | All realms up | The last down realm in the region comes back. |
 | Watched realm went down / came back up | A realm in `WATCH_REALMS` changes status. Notes if a login queue is active. |
 | Weekly maintenance warning | `MAINT_WARN_MINUTES` before the regular maintenance window. Blizzard has no maintenance API, so this follows the usual schedule and is not a confirmed shutdown. |
@@ -54,7 +54,7 @@ Everything is set in `.env`. Only the first four are required.
 | `REGION` | `us` | `us`, `eu`, `kr` or `tw`. |
 | `POLL_SECONDS` | `60` | How often to check realm status. Minimum 30. |
 | `WATCH_REALMS` | none | Comma-separated realm slugs that get their own alerts, e.g. `area-52,illidan`. |
-| `MASS_CHANGE_THRESHOLD` | `0.5` | Fraction of realms that must flip at once to count as region-wide. |
+| `MASS_CHANGE_THRESHOLD` | `0.5` | Fraction of realms that must be down to count as a region-wide outage. |
 | `MAINT_DAY` | `2` | Maintenance day, 0 = Sunday to 6 = Saturday. |
 | `MAINT_HOUR` | `7` | Maintenance hour (24h) in `MAINT_TZ`. |
 | `MAINT_TZ` | `America/Los_Angeles` | Time zone for the maintenance window. Daylight saving is handled automatically. |
