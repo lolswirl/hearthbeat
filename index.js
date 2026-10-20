@@ -254,7 +254,7 @@ async function poll() {
     regionDown = s.down / (s.total || 1) >= cfg.massThreshold;
     console.log(`Seeded ${s.total} connected realms (${s.up} up, ${s.down} down)`);
     presenceFromSummary(s);
-    await syncAvatar(s);
+    await syncProfile(s);
     return;
   }
 
@@ -293,7 +293,7 @@ async function poll() {
   }
 
   presenceFromSummary(s);
-  await syncAvatar(s);
+  await syncProfile(s);
 
   if (wentDown.length || cameUp.length) {
     console.log(
@@ -303,28 +303,30 @@ async function poll() {
   }
 }
 
-// ---------- avatar ----------
-// Creaking heart that matches the presence dot: active when all realms are up, dormant when some are
-// down, inactive when all are down. Remembers what it last set so restarts don't spend avatar changes.
-const AVATAR_STATE = new URL('./.avatar-state', import.meta.url);
-let avatar; // 'active' | 'dormant' | 'inactive', loaded from AVATAR_STATE on first use
-let avatarBusy = false; // a rate-limited setAvatar can wait across polls
+// ---------- avatar and banner ----------
+// Creaking heart and heart monitor that match the presence dot: active when all realms are up, dormant
+// when some are down, inactive when all are down. Both change in one request, and the last state set is
+// remembered so restarts don't spend Discord's rate-limited profile edits.
+const PROFILE_STATE = new URL('./.profile-state', import.meta.url);
+let profile; // 'active' | 'dormant' | 'inactive', loaded from PROFILE_STATE on first use
+let profileBusy = false; // a rate-limited edit can wait across polls
 
-async function syncAvatar(s) {
+async function syncProfile(s) {
   const want = s.down === 0 ? 'active' : s.up === 0 ? 'inactive' : 'dormant';
-  avatar ??= await readFile(AVATAR_STATE, 'utf8').catch(() => null);
-  if (avatar === want || avatarBusy) return;
-  avatarBusy = true;
+  profile ??= await readFile(PROFILE_STATE, 'utf8').catch(() => null);
+  if (profile === want || profileBusy) return;
+  profileBusy = true;
+  const asset = (name) => readFile(new URL(`./assets/${name}-${want}.png`, import.meta.url));
   try {
-    await client.user.setAvatar(await readFile(new URL(`./assets/avatar-${want}.png`, import.meta.url)));
-    avatar = want;
-    await writeFile(AVATAR_STATE, want);
-    console.log(`Avatar set to ${want}`);
+    await client.user.edit({ avatar: await asset('avatar'), banner: await asset('banner') });
+    profile = want;
+    await writeFile(PROFILE_STATE, want);
+    console.log(`Avatar and banner set to ${want}`);
   } catch (e) {
     // Retried on the next poll
-    console.error('Failed to update avatar:', e.message);
+    console.error('Failed to update avatar and banner:', e.message);
   } finally {
-    avatarBusy = false;
+    profileBusy = false;
   }
 }
 

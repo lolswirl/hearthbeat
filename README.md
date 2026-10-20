@@ -14,7 +14,7 @@ All alerts go to one channel. If `PING_ROLE_ID` is set, every alert except "stat
 | Weekly maintenance warning | `MAINT_WARN_MINUTES` before the regular maintenance window. Blizzard has no maintenance API, so this follows the usual schedule and is not a confirmed shutdown. |
 | Realm status unavailable | Blizzard API requests fail 3 polls in a row. Posted once, then silent until a poll succeeds. |
 
-The bot's own Discord status shows how many realms are up, e.g. "Watching 83/83 US realms up". Its avatar follows the same rule: an active creaking heart when every realm is up, dormant when some are down, and inactive when all are down.
+The bot's own Discord status shows how many realms are up, e.g. "Watching 83/83 US realms up". Its avatar and banner follow the same rule: an active creaking heart and steady pulse when every realm is up, dormant with a weak pulse when some are down, and inactive with a flatline when all are down.
 
 ## Commands
 
