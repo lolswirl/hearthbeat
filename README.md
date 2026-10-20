@@ -1,4 +1,4 @@
-# Hearthbeat
+# Hearthbeat <img src="assets/heartbeat.gif" height="40" align="absmiddle" alt="">
 
 A Discord bot that watches World of Warcraft realm status through the Blizzard API. It posts when realms go down or come back up, and gives a heads-up before weekly maintenance.
 
@@ -14,7 +14,17 @@ All alerts go to one channel. If `PING_ROLE_ID` is set, every alert except "stat
 | Weekly maintenance warning | `MAINT_WARN_MINUTES` before the regular maintenance window. Blizzard has no maintenance API, so this follows the usual schedule and is not a confirmed shutdown. |
 | Realm status unavailable | Blizzard API requests fail 3 polls in a row. Posted once, then silent until a poll succeeds. |
 
-The bot's own Discord status shows how many realms are up, e.g. "Watching 83/83 US realms up". Its avatar and banner follow the same rule: an active creaking heart and steady pulse when every realm is up, dormant with a weak pulse when some are down, and inactive with a flatline when all are down.
+The bot's own Discord status shows how many realms are up, e.g. "Watching 83/83 US realms up".
+
+## Avatar and banner
+
+The bot's profile follows the region, the same way its status dot does.
+
+| Realms | Avatar | Banner |
+| --- | --- | --- |
+| All up | <img src="assets/avatar-active.png" width="64" alt="Active creaking heart"> | <img src="assets/banner-active.png" width="340" alt="Steady pulse"> |
+| Some down | <img src="assets/avatar-dormant.png" width="64" alt="Dormant creaking heart"> | <img src="assets/banner-dormant.png" width="340" alt="Weak pulse"> |
+| All down | <img src="assets/avatar-inactive.png" width="64" alt="Inactive creaking heart"> | <img src="assets/banner-inactive.png" width="340" alt="Flatline"> |
 
 ## Commands
 
