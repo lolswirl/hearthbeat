@@ -1,4 +1,4 @@
-# servers-up
+# Hearthbeat
 
 A Discord bot that watches World of Warcraft realm status through the Blizzard API. It posts when realms go down or come back up, and gives a heads-up before weekly maintenance.
 
@@ -69,8 +69,8 @@ Any always-on Linux machine with systemd works, such as a Raspberry Pi or a VPS.
 ```bash
 sudo apt update && sudo apt install -y git nodejs npm
 node -v # needs v18.17 or newer
-git clone https://github.com/lolswirl/serversup.git
-cd serversup
+git clone https://github.com/lolswirl/hearthbeat.git
+cd hearthbeat
 npm ci --omit=dev
 cp .env.example .env
 nano .env # fill in your values, Ctrl+O to save, Ctrl+X to exit
@@ -81,10 +81,10 @@ The service starts on boot and restarts itself if it crashes.
 
 | Task | Command |
 | --- | --- |
-| Live logs | `journalctl -u servers-up -f` |
-| Restart (after editing `.env`) | `sudo systemctl restart servers-up` |
-| Update | `git pull && npm ci --omit=dev && sudo systemctl restart servers-up` |
-| Stop | `sudo systemctl stop servers-up` |
+| Live logs | `journalctl -u hearthbeat -f` |
+| Restart (after editing `.env`) | `sudo systemctl restart hearthbeat` |
+| Update | `git pull && npm ci --omit=dev && sudo systemctl restart hearthbeat` |
+| Stop | `sudo systemctl stop hearthbeat` |
 
 ### Automatic updates
 
@@ -98,8 +98,8 @@ It adds a timer that checks `main` every minute. When there are new commits it r
 
 | Task | Command |
 | --- | --- |
-| Update log | `journalctl -u servers-up-update -f` |
-| Turn off | `sudo systemctl disable --now servers-up-update.timer` |
+| Update log | `journalctl -u hearthbeat-update -f` |
+| Turn off | `sudo systemctl disable --now hearthbeat-update.timer` |
 
 ## How it works
 
