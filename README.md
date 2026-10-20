@@ -1,4 +1,4 @@
-# Hearthbeat <img src="assets/heartbeat.gif" height="40" align="absmiddle" alt="">
+# Hearthbeat <img src="assets/heartbeat.gif" height="30" align="absmiddle" alt="">
 
 A Discord bot that watches World of Warcraft realm status through the Blizzard API. It posts when realms go down or come back up, and gives a heads-up before weekly maintenance.
 
