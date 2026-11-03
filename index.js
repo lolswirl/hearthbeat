@@ -218,11 +218,12 @@ let channel = null;
 async function post(embed, ping = false) {
   if (!channel) return;
   try {
-    await channel.send({
+    const msg = await channel.send({
       content: ping && cfg.pingRole ? `<@&${cfg.pingRole}>` : undefined,
       embeds: [embed],
       allowedMentions: { roles: cfg.pingRole ? [cfg.pingRole] : [] },
     });
+    console.log(`${new Date().toISOString()} posted "${embed.data.title}" (message ${msg.id}, pid ${process.pid})`);
   } catch (e) {
     console.error('Failed to post to Discord:', e.message);
   }
@@ -360,6 +361,7 @@ async function checkMaintenance() {
     const weekKey = `${w}-${Math.floor((Date.now() + mins * 60_000) / 86_400_000)}`;
     if (mins === w && !sentWarnings.has(weekKey)) {
       sentWarnings.add(weekKey);
+      console.log(`${new Date().toISOString()} sending ${w} minute maintenance warning (key ${weekKey})`);
       const at = Math.floor((Date.now() + mins * 60_000) / 60_000) * 60;
       await post(alerts.maintenance(w, at), true);
     }
