@@ -183,8 +183,7 @@ const alerts = {
     new EmbedBuilder()
       .setColor(COLORS.WARN)
       .setTitle(`Weekly maintenance in ${mins} minutes`)
-      .setDescription(`${REGION} realms usually go down at <t:${at}:t> (<t:${at}:R>).`)
-      .setFooter({ text: 'Regular schedule, not a confirmed shutdown' }),
+      .setDescription(`${REGION} realms usually go down at <t:${at}:t> (<t:${at}:R>).`),
   massDown: (crs, s) =>
     new EmbedBuilder()
       .setColor(COLORS.DOWN)
